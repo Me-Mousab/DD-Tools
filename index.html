@@ -225,11 +225,11 @@
         
         function saveToGoogleSheets(data) {
             // Remplacez ceci par l'URL de votre Web App Apps Script
-            const SCRIPT_URL = "VOTRE_URL_WEB_APP_SCRIPT";
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzUfvRxZq-ew7P0wmoQsSoTit8TI3X1K1zxa7gjyrH8i-qEjRV_V_j88YO5yH1kAYAAnQ/exec";
             
             showMessage('Envoi des données en cours...', 'info');
             
-            if (!SCRIPT_URL || SCRIPT_URL === "VOTRE_URL_WEB_APP_SCRIPT") {
+            if (!SCRIPT_URL || SCRIPT_URL === "https://script.google.com/macros/s/AKfycbzUfvRxZq-ew7P0wmoQsSoTit8TI3X1K1zxa7gjyrH8i-qEjRV_V_j88YO5yH1kAYAAnQ/exec") {
                 showMessage('Erreur: URL du script non configurée. Voir les instructions.', 'error');
                 console.log("Données à enregistrer:", data);
                 return;
