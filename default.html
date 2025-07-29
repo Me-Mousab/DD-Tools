@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Formulaire Géospatial - Enregistrement dans Google Sheets</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        #map { height: 400px; width: 100%; margin: 20px 0; border: 1px solid #ddd; border-radius: 4px; }
+        button { padding: 10px 15px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+        button:hover { background: #45a049; }
+        #coordinates { width: 100%; height: 100px; margin-bottom: 20px; }
+        .two-columns { display: flex; gap: 20px; }
+        .column { flex: 1; }
+        .map-container { position: relative; }
+        .map-type-control { position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 5px; border-radius: 4px; }
+        .checkbox-group { margin: 10px 0; }
+        .checkbox-group label { display: inline-block; margin-left: 5px; }
+        select[multiple] { height: 120px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Formulaire Géospatial</h1>
+        <p>Remplissez les informations et dessinez le polygone sur la carte</p>
+        
+        <form id="geoForm">
+            <div class="two-columns">
+                <div class="column">
+                    <div class="form-group">
+                        <label for="province">PROVINCE (FR):</label>
+                        <input type="text" id="province" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="cercle">CERCLE (FR):</label>
+                        <input type="text" id="cercle" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="commune">COMMUNE (FR):</label>
+                        <input type="text" id="commune" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="douar">DOUAR (FR):</label>
+                        <input type="text" id="douar" required>
+                    </div>
+                </div>
+                
+                <div class="column">
+                    <div class="form-group">
+                        <label for="province_ar">PROVINCE (AR):</label>
+                        <input type="text" id="province_ar" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="cercle_ar">CERCLE (AR):</label>
+                        <input type="text" id="cercle_ar" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="commune_ar">COMMUNE (AR):</label>
+                        <input type="text" id="commune_ar" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="douar_ar">DOUAR (AR):</label>
+                        <input type="text" id="douar_ar" required>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="population">Nombre d'habitants:</label>
+                <input type="number" id="population" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Nature du foncier:</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="foncier_prive" name="foncier" value="Privé">
+                    <label for="foncier_prive">Privé</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="foncier_public" name="foncier" value="Public">
+                    <label for="foncier_public">Public</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="foncier_soulali" name="foncier" value="Soulali">
+                    <label for="foncier_soulali">Soulali</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="foncier_autre" name="foncier" value="Autre">
+                    <label for="foncier_autre">Autre</label>
+                    <input type="text" id="foncier_autre_detail" style="width: calc(100% - 30px); margin-left: 25px; margin-top: 5px;">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="equipements">Équipements publics existants:</label>
+                <select id="equipements" multiple>
+                    <option value="École">École</option>
+                    <option value="Mosquée">Mosquée</option>
+                    <option value="Centre de santé">Centre de santé</option>
+                    <option value="Marché">Marché</option>
+                    <option value="Terrain de sport">Terrain de sport</option>
+                    <option value="Fontaine publique">Fontaine publique</option>
+                    <option value="Administration locale">Administration locale</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Réseaux d'installation:</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="reseau_eau" name="reseau" value="Eau">
+                    <label for="reseau_eau">Eau potable</label>
+                    <select id="reseau_eau_type" style="width: calc(100% - 30px); margin-left: 25px; margin-top: 5px;">
+                        <option value="Réseau public">Réseau public</option>
+                        <option value="Puits">Puits</option>
+                        <option value="Fontaine">Fontaine</option>
+                    </select>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="reseau_electricite" name="reseau" value="Électricité">
+                    <label for="reseau_electricite">Électricité</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="reseau_route" name="reseau" value="Route">
+                    <label for="reseau_route">Route d'accès</label>
+                    <select id="reseau_route_type" style="width: calc(100% - 30px); margin-left: 25px; margin-top: 5px;">
+                        <option value="Goudron">Goudron</option>
+                        <option value="Piste">Piste</option>
+                        <option value="Chemin rural">Chemin rural</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="sup_ha">SUP EN HA:</label>
+                <input type="number" id="sup_ha" step="0.01" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Dessinez le polygone sur la carte:</label>
+                <div class="map-container">
+                    <div id="map"></div>
+                    <div class="map-type-control">
+                        <label>Type de carte:</label>
+                        <select id="mapType">
+                            <option value="osm">OpenStreetMap</option>
+                            <option value="satellite">Satellite</option>
+                            <option value="hybrid">Hybride</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" id="clearBtn">Effacer le dessin</button>
+            </div>
+            
+            <div class="form-group">
+                <label for="coordinates">Coordonnées du polygone (JSON):</label>
+                <textarea id="coordinates" readonly></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="specifications">Spécifications locales du douar:</label>
+                <textarea id="specifications" rows="3"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="autres_donnees">Autres données:</label>
+                <textarea id="autres_donnees" rows="2"></textarea>
+            </div>
+            
+            <button type="submit" id="submitBtn">Enregistrer dans Google Sheets</button>
+            <div id="message" style="margin-top: 15px;"></div>
+        </form>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <!-- Leaflet.draw -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <!-- Leaflet Providers -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-providers/1.13.0/leaflet-providers.min.js"></script>
+    
+    <script>
+        // Initialisation de la carte
+        let map;
+        let drawnItems = new L.FeatureGroup();
+        let polygonCoordinates = null;
+        let currentBaseLayer;
+        
+        function initMap() {
+            // Centrer sur le Maroc par défaut
+            map = L.map('map').setView([31.7917, -7.0926], 6);
+            
+            // Couches de base
+            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            });
+            
+            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
+            });
+            
+            const hybridLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+                attribution: 'Google Maps',
+                subdomains: ['mt0','mt1','mt2','mt3']
+            });
+            
+            // Ajouter la couche OpenStreetMap par défaut
+            osmLayer.addTo(map);
+            currentBaseLayer = osmLayer;
+            
+            // Initialiser le contrôle de dessin
+            const drawControl = new L.Control.Draw({
+                draw: {
+                    polygon: {
+                        shapeOptions: {
+                            color: '#3388ff',
+                            fillColor: '#3388ff',
+                            fillOpacity: 0.3
+                        },
+                        allowIntersection: false,
+                        showArea: true
+                    },
+                    polyline: false,
+                    rectangle: false,
+                    circle: false,
+                    marker: false,
+                    circlemarker: false
+                },
+                edit: {
+                    featureGroup: drawnItems
+                }
+            });
+            
+            map.addControl(drawControl);
+            map.addLayer(drawnItems);
+            
+            // Contrôle de recherche
+            L.Control.geocoder({
+                defaultMarkGeocode: false
+            }).on('markgeocode', function(e) {
+                map.fitBounds(e.geocode.bbox);
+            }).addTo(map);
+            
+            // Écouter les événements de dessin
+            map.on(L.Draw.Event.CREATED, function (e) {
+                const layer = e.layer;
+                drawnItems.addLayer(layer);
+                
+                if (e.layerType === 'polygon') {
+                    polygonCoordinates = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng]);
+                    document.getElementById('coordinates').value = JSON.stringify(polygonCoordinates);
+                    
+                    // Calculer la superficie en hectares
+                    const area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+                    document.getElementById('sup_ha').value = (area / 10000).toFixed(2);
+                }
+            });
+            
+            map.on(L.Draw.Event.EDITED, function (e) {
+                const layers = e.layers;
+                layers.eachLayer(function(layer) {
+                    if (layer instanceof L.Polygon) {
+                        polygonCoordinates = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng]);
+                        document.getElementById('coordinates').value = JSON.stringify(polygonCoordinates);
+                        
+                        // Recalculer la superficie
+                        const area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+                        document.getElementById('sup_ha').value = (area / 10000).toFixed(2);
+                    }
+                });
+            });
+            
+            map.on(L.Draw.Event.DELETED, function (e) {
+                polygonCoordinates = null;
+                document.getElementById('coordinates').value = '';
+                document.getElementById('sup_ha').value = '';
+            });
+            
+            // Gestion du changement de type de carte
+            document.getElementById('mapType').addEventListener('change', function() {
+                map.removeLayer(currentBaseLayer);
+                
+                switch(this.value) {
+                    case 'satellite':
+                        currentBaseLayer = satelliteLayer;
+                        break;
+                    case 'hybrid':
+                        currentBaseLayer = hybridLayer;
+                        break;
+                    default:
+                        currentBaseLayer = osmLayer;
+                }
+                
+                currentBaseLayer.addTo(map);
+            });
+        }
+        
+        // Initialiser la carte quand la page est chargée
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            
+            // Effacer le dessin
+            document.getElementById('clearBtn').addEventListener('click', function() {
+                drawnItems.clearLayers();
+                polygonCoordinates = null;
+                document.getElementById('coordinates').value = '';
+                document.getElementById('sup_ha').value = '';
+            });
+            
+            // Soumission du formulaire
+            document.getElementById('geoForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                if (!polygonCoordinates) {
+                    showMessage('Veuillez dessiner un polygone sur la carte', 'error');
+                    return;
+                }
+                
+                // Collecte des données du foncier
+                const foncier = [];
+                if(document.getElementById('foncier_prive').checked) foncier.push("Privé");
+                if(document.getElementById('foncier_public').checked) foncier.push("Public");
+                if(document.getElementById('foncier_soulali').checked) foncier.push("Soulali");
+                if(document.getElementById('foncier_autre').checked) {
+                    foncier.push("Autre: " + document.getElementById('foncier_autre_detail').value);
+                }
+                
+                // Collecte des équipements
+                const equipements = Array.from(document.getElementById('equipements').selectedOptions)
+                    .map(option => option.value);
+                
+                // Collecte des réseaux
+                const reseaux = [];
+                if(document.getElementById('reseau_eau').checked) {
+                    reseaux.push("Eau: " + document.getElementById('reseau_eau_type').value);
+                }
+                if(document.getElementById('reseau_electricite').checked) reseaux.push("Électricité");
+                if(document.getElementById('reseau_route').checked) {
+                    reseaux.push("Route: " + document.getElementById('reseau_route_type').value);
+                }
+                
+                const formData = {
+                    province: document.getElementById('province').value,
+                    cercle: document.getElementById('cercle').value,
+                    commune: document.getElementById('commune').value,
+                    douar: document.getElementById('douar').value,
+                    province_ar: document.getElementById('province_ar').value,
+                    cercle_ar: document.getElementById('cercle_ar').value,
+                    commune_ar: document.getElementById('commune_ar').value,
+                    douar_ar: document.getElementById('douar_ar').value,
+                    population: document.getElementById('population').value,
+                    foncier: foncier.join(", "),
+                    equipements: equipements.join(", "),
+                    reseaux: reseaux.join(", "),
+                    sup_ha: document.getElementById('sup_ha').value,
+                    specifications: document.getElementById('specifications').value,
+                    autres_donnees: document.getElementById('autres_donnees').value,
+                    polygon: JSON.stringify(polygonCoordinates)
+                };
+                
+                // Envoyer les données à Google Sheets
+                saveToGoogleSheets(formData);
+            });
+        });
+        
+        function showMessage(msg, type = 'success') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = msg;
+            messageDiv.style.color = type === 'error' ? 'red' : 'green';
+        }
+        
+        function saveToGoogleSheets(data) {
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzadquJxgMEmjQ-289zmaRLY-tu7QLoe99LX4zDxaikUMWcVlcGSG6eFmaxr53erEE/exec";
+            
+            showMessage('Envoi des données en cours...', 'info');
+            
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(() => {
+                showMessage('Données enregistrées avec succès!');
+                document.getElementById('geoForm').reset();
+                drawnItems.clearLayers();
+                polygonCoordinates = null;
+                document.getElementById('coordinates').value = '';
+            })
+            .catch(error => {
+                showMessage('Erreur lors de l\'enregistrement: ' + error.message, 'error');
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>
